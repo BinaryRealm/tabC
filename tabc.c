@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "help_message.h"
 
 char *line;
 size_t len = 0;
@@ -267,7 +266,7 @@ int main(int argc, char *argv[])
 	{
 		if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-help") == 0 || strcmp(argv[1], "-h") == 0)
 		{
-			printf(HELP_MESSAGE);
+			printf("See README.md\n");
 			exit(EXIT_SUCCESS);
 		}
 		else
