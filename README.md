@@ -104,8 +104,8 @@ These keywords are only recognized if there are >=0 tabs preceding it and there 
 
 #### Comment Examples
 1. `[ return 1//exits the function ] -> [ return 1;//exits the function) ]`
-2. `[ printf(\"//test\") ] -> [ printf(\"//test\"); ]`
-3. `[ printf(\"//test\")//comment] -> [ printf(\"//test\")//comment;]` (this will cause an error)
+2. `[ printf("//test") ] -> [ printf("//test"); ]`
+3. `[ printf("//test")//comment] -> [ printf("//test")//comment;]` (this will cause an error)
 4. `[ label://comment ] -> [ label://comment ]`
 5. `[ label:(whitespace)//comment ] -> [ label:(whitespace);//comment]` (this will cause an error)
 
