@@ -1,16 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-char *line;
-size_t len = 0;
-ssize_t nread;
-
 #define WORDCOUNT 15
-const char * kwords[WORDCOUNT]={"if","else","for","while","do","switch",
-"case","default","#","//","\"","enum","struct","union","<$>"};
 
-int countTabs(void)
+
+int countTabs(char *line, ssize_t nread)
 {
 	int tab_counter;
 	for(int i = 0; i< nread; i++)
@@ -36,12 +30,14 @@ void multiTab(int tab_count, FILE *outf)
 	}
 }
 
+
 void printOpenBracket(int tab_count, FILE *outf)
 {
 	multiTab(tab_count, outf);
 	fputc('{', outf);
 	fputc('\n', outf);
 }
+
 
 void printClosedBracket(int tab_count, FILE *outf)
 {
@@ -50,7 +46,8 @@ void printClosedBracket(int tab_count, FILE *outf)
 	fputc('\n', outf);
 }
 
-void fwriteWithSemicolon(FILE *outf)
+
+void fwriteWithSemicolon(FILE *outf, char *line, ssize_t nread)
 {
 	if(line[nread-1] == '\n')
 	{
@@ -67,7 +64,8 @@ void fwriteWithSemicolon(FILE *outf)
 	}
 }
 
-int lineOnlyTabs(void)
+
+int lineOnlyTabs(char *line, ssize_t nread)
 {
 	for(int i = 0; i < nread-1; i++)
 	{
@@ -79,8 +77,12 @@ int lineOnlyTabs(void)
 	return 1;
 }
 
-void printLine(int tabs, FILE *outf)
+
+void printLine(int tabs, FILE *outf, char *line, ssize_t nread)
 {
+	static const char * kwords[WORDCOUNT]={"if","else","for","while","do","switch",
+	"case","default","#","//","\"","enum","struct","union","<$>"};
+
 	if(line[nread-3]==':' && line[nread-2]==':')//:: at the end is a (mostly) equivalent to <$> at the start
 	{
 		if(line+tabs == strstr(line,kwords[14]))//if both :: and <$> exist get rid of both of them
@@ -129,7 +131,7 @@ void printLine(int tabs, FILE *outf)
 		{
 			if((r=strstr(p, "\""))> p&& r!=NULL)
 			{
-				fwriteWithSemicolon(outf);
+				fwriteWithSemicolon(outf, line, nread);
 				return;
 			}
 		}
@@ -164,110 +166,112 @@ void printLine(int tabs, FILE *outf)
 
 	else//at the end assume it is a standard line
 	{
-		fwriteWithSemicolon(outf);
+		fwriteWithSemicolon(outf, line, nread);
 	}
 
 }
+
 
 void convertToC(FILE *inf, FILE *outf)
 {
+	size_t n = 0; //for getline function
+	char *line = NULL;
+	ssize_t nread;
+
+
 	char * no_process_start = "<$$>\n";
 	char * no_process_end = "</$$>\n";
-	static int no_process = 0;
+	int no_process = 0;
 	int curr_line_tabs;
-	static int prev_line_tabs = 0;
+	int prev_line_tabs = 0;
 
-	if( (nread = getline(&line, &len, inf)) != -1)
+	while(1)
 	{
-		curr_line_tabs= countTabs();
+		if( (nread = getline(&line, &n, inf)) != -1)
+		{
+			curr_line_tabs= countTabs(line, nread);
 
-		if(nread==1)//preserve newlines
-		{
-			fputc('\n',outf);
-			convertToC(inf, outf);
-		}
-
-		else if(line== strstr(line, no_process_end))//recognizes end of noprocess
-		{
-			no_process = 0;
-			convertToC(inf, outf);
-		}
-
-		else if(no_process == 1)// main noprocess action when flag activated
-		{
-			fwrite(line, nread, 1, outf);
-			convertToC(inf, outf);
-		}
-
-		else if(line== strstr(line, no_process_start))//opens noprocess block
-		{
-			no_process = 1;
-			convertToC(inf, outf);
-		}
-
-		else if(lineOnlyTabs() == 1)//blank lines with only tabs are ok
-		{
-			fwrite(line, nread, 1, outf);
-			convertToC(inf, outf);
-		}
-		else if(curr_line_tabs > prev_line_tabs)
-		{
-			for(int i = 0; i < curr_line_tabs - prev_line_tabs; i++)
+			if(nread==1)//preserve newlines
 			{
-				printOpenBracket(curr_line_tabs +i - 1, outf);
+				fputc('\n',outf);
 			}
-			prev_line_tabs = curr_line_tabs;
-			printLine(curr_line_tabs, outf);
-			convertToC(inf, outf);
-		}
-		else if(curr_line_tabs < prev_line_tabs)
-		{
-			for(int i = prev_line_tabs - curr_line_tabs; i > 0 ; i--)
+
+			else if(line== strstr(line, no_process_end))//recognizes end of noprocess
 			{
-				printClosedBracket(curr_line_tabs+ i - 1, outf);
+				no_process = 0;
 			}
-			prev_line_tabs = curr_line_tabs;
-			printLine(curr_line_tabs, outf);
-			convertToC(inf, outf);
+
+			else if(no_process == 1)// main noprocess action when flag activated
+			{
+				fwrite(line, nread, 1, outf);
+			}
+
+			else if(line== strstr(line, no_process_start))//opens noprocess block
+			{
+				no_process = 1;
+			}
+
+			else if(lineOnlyTabs(line, nread) == 1)//blank lines with only tabs are ok
+			{
+				fwrite(line, nread, 1, outf);
+			}
+
+			else if(curr_line_tabs > prev_line_tabs)
+			{
+				for(int i = 0; i < curr_line_tabs - prev_line_tabs; i++)
+				{
+					printOpenBracket(curr_line_tabs +i - 1, outf);
+				}
+				prev_line_tabs = curr_line_tabs;
+				printLine(curr_line_tabs, outf, line, nread);
+			}
+
+			else if(curr_line_tabs < prev_line_tabs)
+			{
+				for(int i = prev_line_tabs - curr_line_tabs; i > 0 ; i--)
+				{
+					printClosedBracket(curr_line_tabs+ i - 1, outf);
+				}
+				prev_line_tabs = curr_line_tabs;
+				printLine(curr_line_tabs, outf, line, nread);
+			}
+			else
+			{
+				printLine(curr_line_tabs, outf, line, nread);
+			}
 		}
-		else
+		else    //if the last line has tabs, then seal the block closed with brackets.
 		{
-			printLine(curr_line_tabs, outf);
-			convertToC(inf, outf);
-		}
-	}
-	else    //if the last line has tabs, then seal the block closed with brackets.
-	{
-		if(no_process==1)//multiline no_processing means absolutely no changes, so it can't be sealed off at the end with brackets
-		{
+			if(no_process==1)//multiline no_processing means absolutely no changes, so it can't be sealed off at the end with brackets
+			{
+				return;
+			}
+			if(prev_line_tabs>0)
+			{
+				for(int i = prev_line_tabs; i > 0 ; i--)
+				{
+					printClosedBracket(i-1, outf);
+				}
+			}
+			free(line);
 			return;
-		}
-		if(prev_line_tabs>0)
-		{
-			for(int i = prev_line_tabs; i > 0 ; i--)
-			{
-				printClosedBracket(i-1, outf);
-			}
 		}
 	}
 }
 
 
-
-
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	if(argc == 1)
 	{
 		fprintf(stderr, "tabc: at least 1 input file path required.  Type option -help for help\n");
 		exit(EXIT_FAILURE);
 	}
-	if(argc == 2)
+	else if(argc == 2)
 	{
 		if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-help") == 0 || strcmp(argv[1], "-h") == 0)
 		{
 			printf("See README.md\n");
-			exit(EXIT_SUCCESS);
 		}
 		else
 		{
@@ -278,13 +282,11 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 			}
 			convertToC(inf, stdout);
-			free(line);
 			fclose(inf);
-			exit(EXIT_SUCCESS);
 		}
 	}
 
-	if(argc == 3)
+	else if(argc == 3)
 	{
 		FILE *inf = fopen(argv[1], "r");
 
@@ -299,12 +301,11 @@ int main(int argc, char *argv[])
 		{
 			fprintf(stderr, "tabc: unable to open output file\n");
 			exit(EXIT_FAILURE);
-		};
+		}
 
 		convertToC(inf, outf);
-		free(line);
 		fclose(inf);
 		fclose(outf);
-		exit(EXIT_SUCCESS);
 	}
+	exit(EXIT_SUCCESS);
 }
