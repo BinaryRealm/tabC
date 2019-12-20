@@ -1,6 +1,15 @@
 # tabC
 This is the C with Python-style-syntax preprocessor (tabC) (Version 0.1)
 
+## Updates
+
+* *Version 0.2 is currently under development*
+* *tabC 0.2 is a major overhaul of the previous version, and it will:*
+  * *have a more intuitive syntax*
+  * *provide syntax error feedback*
+  * *handle singleline and multiline comments seamlessly*
+  * *allow the user to write multiline statements*
+
 ## Command Format
 
 * `tabc [-h -help --help]` (prints help info)
